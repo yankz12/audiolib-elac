@@ -74,25 +74,26 @@ class ElectroDynamic(Transducers):
 
     def imp_to_ts(self, plot_params=True):
         self.Rec = self.z[0]
-        self.fs, self.z_max = self._manual_pick_fs(self.f_z, self.z, )
+        self.fs, self._z_max = self._manual_pick_fs(self.f_z, self.z, )
         idx_fs = al_tls.closest_idx_to_val(arr=self.f_z, val=self.fs)
-        self.r0 = self.z_max / self.Rec
-        Z_at_f1_f2 = np.sqrt(self.r0)*self.Rec
+        self._r0 = self._z_max / self.Rec
+        Z_at_f1_f2 = np.sqrt(self._r0)*self.Rec
         idx_f1 = al_tls.closest_idx_to_val(arr=self.z[:idx_fs], val=Z_at_f1_f2)
-        self.f1  = self.f_z[idx_f1]
-        # Limit f2 search frequency range to [fs:(2*fs-f1)] to avoid Zmax@Lec:
-        idx_limit_high_freq_f2 = int(2*idx_fs - idx_f1)
+        self._f1  = self.f_z[idx_f1]
+        # Limit f2 search frequency range to [fs:(2*fs)] to avoid Zmax@Lec:
+        idx_limit_high_freq_f2 = int(2*idx_fs)
+        print(f'high limit: {self.f_z[idx_limit_high_freq_f2]} Hz')
         idx_f2 = idx_fs + al_tls.closest_idx_to_val(
             arr = self.z[idx_fs:idx_limit_high_freq_f2],
             val = Z_at_f1_f2,
         )
-        self.f2 = self.f_z[idx_f2]
-        self.Qms = self.fs*np.sqrt(self.r0) / (self.f2 - self.f1)
-        self.Qes = self.Qms / (self.r0 - 1)
+        self._f2 = self.f_z[idx_f2]
+        self.Qms = self.fs*np.sqrt(self._r0) / (self._f2 - self._f1)
+        self.Qes = self.Qms / (self._r0 - 1)
         self.Qts = self.Qms*self.Qes / (self.Qms + self.Qes)
 
         if plot_params:
-            self.plot_z_params(self.f_z, self.z, self.f1, self.f2, self.r0)
+            self.plot_z_params()
 
     def ts_to_imp(self, ):
         # TODO: Define proper frequency range if f_z not given
@@ -124,20 +125,20 @@ class ElectroDynamic(Transducers):
     def get_sensitivity(self):
         pass
 
-    def plot_z_params(self, f_z, z, f1, f2, r0):
-        v_Rec = self.Rec*np.ones(len(f_z))
-        v_z_f1_f2 = np.sqrt(r0)*self.Rec*np.ones(len(f_z))
+    def plot_z_params(self, ):
+        v_Rec = self.Rec*np.ones(len(self.f_z))
+        v_z_f1_f2 = np.sqrt(self._r0)*self.Rec*np.ones(len(self.f_z))
         _, ax = al_plt.plot_rfft_freq(
-            f_z,
-            z,
+            self.f_z,
+            self.z,
             xscale = 'log',
             yscale='lin',
         )
-        ax.axvline(x=f1, ymin=0, ymax=100, linestyle='--', color='r', label=r'f$_1$')
-        ax.axvline(x=f2, ymin=0, ymax=100, linestyle='--', color='cyan', label=r'f$_2$')
+        ax.axvline(x=self._f1, ymin=0, ymax=100, linestyle='--', color='r', label=r'f$_1$')
+        ax.axvline(x=self._f2, ymin=0, ymax=100, linestyle='--', color='cyan', label=r'f$_2$')
         ax.axvline(x=self.fs, ymin=0, ymax=100, linestyle='--', color='k', label=r'f$_s$')
-        ax.plot(f_z, v_z_f1_f2, linestyle='--', label=r'$\sqrt{r_0} R_{ec}$')
-        ax.plot(f_z, v_Rec, linestyle='--', label=r'$R_{ec}$')
+        ax.plot(self.f_z, v_z_f1_f2, linestyle='--', label=r'$\sqrt{r_0} R_{ec}$')
+        ax.plot(self.f_z, v_Rec, linestyle='--', label=r'$R_{ec}$')
         ax.set_ylabel(r'|Z| [$\Omega$]')
         ax.legend()
         plt.show(block=False)
