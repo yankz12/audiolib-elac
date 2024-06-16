@@ -48,7 +48,7 @@ class ElectroDynamic(Transducers):
         ]
         non_none_param_idcs = [
             i for i in range(len(param_list)) if param_list[i] != None
-        ]
+        ] # Get idcs of input params which are not None
         imp_input_given = (f_z is not None) and (z is not None)
         if imp_input_given and (len(non_none_param_idcs) == 0):
             self.f_z = f_z
@@ -64,15 +64,15 @@ class ElectroDynamic(Transducers):
             self.Mms = Mms
             self.Rec = Rec
             self.Lec = Lec
-            self.Qts = Qts
             self.Qes = Qes
             self.Qms = Qms
-            self.Cms = Cms
-            self.Rms = Rms
             self.fs = fs
             self.Bl = Bl
+            self._update_dependent_params()
 
     def imp_to_ts(self, plot_params=True):
+        # TODO: Add Mms calculation from added mass method
+        # TODO: Add Lec calculation from imaginary part average divided by omega
         self.Rec = self.z[0]
         self.fs, self._z_max = self._manual_pick_fs(self.f_z, self.z, )
         idx_fs = al_tls.closest_idx_to_val(arr=self.f_z, val=self.fs)
@@ -142,6 +142,15 @@ class ElectroDynamic(Transducers):
         ax.set_ylabel(r'|Z| [$\Omega$]')
         ax.legend()
         plt.show(block=False)
+
+    def _update_dependent_params(self):
+        # Update dependent variables when their parameters are changed/set.
+        # TODO: Define dependent and independent variables, like:
+        # Dependent: Qts = Qms*Qes/(Qms+Qes), Cms = ..., Rms = 
+        # Independent: Lec, Rec, Sd, etc.
+        self.Qts = self.Qms * self.Qes / (self.Qms + self.Qes)
+        self.Cms = 1 / ((2*np.pi*self.fs)**2 * self.Mms )
+        self.Rms = 1 / (2*np.pi*self.fs*self.Qms*self.Cms)
 
     def print_ts(self):
         print(79*'-')
