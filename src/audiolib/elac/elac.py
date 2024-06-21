@@ -88,9 +88,7 @@ class ElectroDynamic(Transducers):
             val = Z_at_f1_f2,
         )
         self._f2 = self.f_z[idx_f2]
-        self.Qms = self.fs*np.sqrt(self._r0) / (self._f2 - self._f1)
-        self.Qes = self.Qms / (self._r0 - 1)
-        self.Qts = self.Qms*self.Qes / (self.Qms + self.Qes)
+        self._update_dependent_params()
 
         if plot_params:
             self.plot_z_params()
@@ -151,6 +149,8 @@ class ElectroDynamic(Transducers):
         self.Qts = self.Qms * self.Qes / (self.Qms + self.Qes)
         self.Cms = 1 / ((2*np.pi*self.fs)**2 * self.Mms )
         self.Rms = 1 / (2*np.pi*self.fs*self.Qms*self.Cms)
+        self.Qes = self.Qms / (self._r0 - 1)
+        self.Bl = np.sqrt(self.Rms*(self._z_max - self.Rec))
 
     def print_ts(self):
         print(79*'-')
