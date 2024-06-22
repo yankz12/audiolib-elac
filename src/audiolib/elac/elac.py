@@ -68,6 +68,7 @@ class ElectroDynamic(Transducers):
     """
     def __init__(
             self,
+            name = None,
             f_z = None,
             z = None,
             f_z_added_mass = None,
@@ -85,6 +86,7 @@ class ElectroDynamic(Transducers):
             Qms = None,
             Bl = None,
     ):
+        self.name = name
         self.Sd = Sd
         param_list = [
             fs ,
@@ -121,8 +123,8 @@ class ElectroDynamic(Transducers):
                 self.added_mass = added_mass
             else:
                 warnings.warn(
-                    'Mms not calculated: missing added mass frequency and/or ' 
-                    + 'impedance vector.'
+                    'Mms not calculated: missing added mass frequency vector ' 
+                    + 'and/or added mass impedance vector and/or added weight.'
                 )
             self.imp_to_ts()
         if not imp_input_given and (len(not_none_param_idcs) > 0):
@@ -149,7 +151,6 @@ class ElectroDynamic(Transducers):
         self._f1  = self.f_z[idx_f1]
         # Limit f2 search frequency range to [fs:(2*fs)] to avoid Zmax@Lec:
         idx_limit_high_freq_f2 = int(2*idx_fs)
-        print(f'high limit: {self.f_z[idx_limit_high_freq_f2]} Hz')
         idx_f2 = idx_fs + al_tls.closest_idx_to_val(
             arr = self.z[idx_fs:idx_limit_high_freq_f2],
             val = Z_at_f1_f2,
@@ -192,7 +193,7 @@ class ElectroDynamic(Transducers):
 
     def _manual_pick_fs(self, f_z, z, z_explanation, ):
         fig, ax = al_plt.plot_rfft_freq(f_z, z, xscale='log', )
-        ax.set_title(fr'{z_explanation}: Manually hover over f$_s$ and Z$_{max}$ '+ 
+        ax.set_title(f'{z_explanation}:\nManually hover over f$_s$ and Z$_{{max}}$ '+ 
                      fr'and select with "Space"-Button.')
         ax.set_ylabel(r'|Z| [$\Omega$]')
         fs_selection = plt.ginput(
@@ -265,16 +266,20 @@ class ElectroDynamic(Transducers):
         self.Bl = np.sqrt(self.Rms*(self._z_max - self.Rec))
 
     def print_ts(self):
+        # TODO: Implement standardized unit-SI-prefix-conversion in tools.
+        print('\n')
         print(79*'-')
-        print(f'Sd = {self.Sd}')
-        print(f'Mms = {self.Mms}')
-        print(f'Rec = {self.Rec}')
-        print(f'Lec = {self.Lec}')
-        print(f'Qts = {self.Qts}')
-        print(f'Qes = {self.Qes}')
-        print(f'Qms = {self.Qms}')
-        print(f'Cms = {self.Cms}')
-        print(f'Rms = {self.Rms}')
-        print(f'fs = {self.fs}')
-        print(f'Bl = {self.Bl}')
+        print(f'{self.name}: Thiele-Small-Parameters')
+        print(f'  Sd = {self.Sd} m²')
+        print(f'  Mms = {self.Mms} kg')
+        print(f'  Rec = {np.round(self.Rec, 2)} Ohm')
+        # print(f'Lec = {self.Lec} H') # TODO: Implement Lec from imag part
+        print(f'  Qts = {self.Qts}')
+        print(f'  Qes = {self.Qes}')
+        print(f'  Qms = {self.Qms}')
+        print(f'  Cms = {self.Cms} m/N')
+        print(f'  Rms = {self.Rms} kg/s')
+        print(f'  fs = {np.round(self.fs, 2)} Hz')
+        print(f'  Bl = {np.round(self.Bl, 2)} Tm')
         print(79*'-')
+        print('\n')
