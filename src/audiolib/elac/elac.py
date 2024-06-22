@@ -23,6 +23,7 @@ class ElectroDynamic(Transducers):
     given. Alternatively, Thiele-Small parameters can be passed during 
     initilization in order to calculate modeled impedance curve from parameters.
     
+    TODO: Update Parameters with added mass inputs
     Parameters
     ----------
     f_z : list or np.array
@@ -63,6 +64,9 @@ class ElectroDynamic(Transducers):
             self,
             f_z = None,
             z = None,
+            f_z_added_mass = None,
+            z_added_mass = None,
+            added_mass = None,
             Sd = None,
             fs = None,
             Rec = None,
@@ -88,21 +92,26 @@ class ElectroDynamic(Transducers):
             Qts,
             Bl ,
         ]
-        non_none_param_idcs = [
+        not_none_param_idcs = [
             i for i in range(len(param_list)) if param_list[i] != None
         ] # Get idcs of input params which are not None
         imp_input_given = (f_z is not None) and (z is not None)
-        if imp_input_given and (len(non_none_param_idcs) == 0):
+        added_mass_imp_input_given = (
+            (f_z_added_mass is not None) and (z_added_mass is not None)
+        )
+        if imp_input_given:
             self.f_z = f_z
             self.z = z
-        if imp_input_given and (len(non_none_param_idcs) > 0):
-            self.f_z = f_z
-            self.z = z
-            warnings.warn(
-                'Impedance curve and TS-Params given: Will overwrite given ' 
-                + 'TS-params by inherent TS-parameter calculation via |Z|.'
-            )
-        if not imp_input_given and (len(non_none_param_idcs) > 0):
+            if (len(not_none_param_idcs) > 0) and added_mass_imp_input_given:
+                warnings.warn(
+                    'Impedance curve and TS-Params given: Will overwrite given ' 
+                    + 'TS-params by inherent TS-parameter calculation via |Z|.'
+                )
+                self.imp_to_ts()
+                # self.Mms = self._calc_mms_via_added_mass(
+                #     f_z = 
+                # )
+        if not imp_input_given and (len(not_none_param_idcs) > 0):
             self.Mms = Mms
             self.Rec = Rec
             self.Lec = Lec
@@ -110,7 +119,7 @@ class ElectroDynamic(Transducers):
             self.Qms = Qms
             self.fs = fs
             self.Bl = Bl
-            self._update_dependent_params()
+            self._update_dependent_params(plot_params=False)
 
     def imp_to_ts(self, plot_params=True):
         # TODO: Add Mms calculation from added mass method
@@ -132,12 +141,13 @@ class ElectroDynamic(Transducers):
         self._f2 = self.f_z[idx_f2]
         self._update_dependent_params()
 
+
         if plot_params:
             self.plot_z_params()
 
     def ts_to_imp(self, freq_range=None, freq_resolution=None, ):
         """
-        Return complex-valued impedance curve from TS-parameters
+        Return complex-valued impedance curve, calculated from TS-parameters
 
         Parameters
         ----------
@@ -157,12 +167,12 @@ class ElectroDynamic(Transducers):
         """
         if self.f_z is not None:
             f_es = self.f_z
-            omega = f_es*2*np.pi
+            omega_es = f_es*2*np.pi
         else:
             f_es = np.arange(freq_range[0], freq_range[1], freq_resolution)
-            omega = 2*np.pi*f_es
-        z_ms = self.Rms + 1j*omega*self.Mms + (1 / (1j*omega*self.Cms))
-        z_es = self.Rec + 1j*omega*self.Lec + (self.Bl**2 / z_ms)
+            omega_es = 2*np.pi*f_es
+        z_ms = self.Rms + 1j*omega_es*self.Mms + (1 / (1j*omega_es*self.Cms))
+        z_es = self.Rec + 1j*omega_es*self.Lec + (self.Bl**2 / z_ms)
         return f_es, z_es,
 
     def _manual_pick_fs(self, f_z, z):
@@ -182,6 +192,23 @@ class ElectroDynamic(Transducers):
         fs = fs_selection[0][0]
         zmax = fs_selection[0][1]
         return fs, zmax
+
+    def _calc_mms_via_added_mass(self, f_z, z added_mass, ):
+        """
+        Parameters
+        ----------
+        added_mass : float
+            Weight of added mass in grams
+
+        Returns
+        -------
+        Mms : float
+            Moving mass, derived by Mms = added_mass / ((fs / fs_new)**2 - 1)
+        """
+        # TODO: Write this, modify imp_to_ts in order to re-use its fs calc
+        fs_new, _ = self._manual_pick_fs(self.f_z, self.z, )
+        Mms = added_mass / ((self.fs / fs_new)**2 - 1)
+        pass
 
     def get_pressure_resp(self):
         pass
