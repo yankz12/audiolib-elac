@@ -17,6 +17,45 @@ class Transducers(ABC):
         pass
 
 class ElectroDynamic(Transducers):
+    """
+    Class to characterize electrodynamic transducers. Complete Thiele-Small 
+    parameters are automatically calculated when added-mass-measurement is
+    given. Alternatively, Thiele-Small parameters can be passed during 
+    initilization in order to calculate modeled impedance curve from parameters.
+    
+    Parameters
+    ----------
+    f_z : list or np.array
+        frequency vector of z
+        If given with z, will re-calculate TS-params and overwrite any input
+        TS-params of this object.
+    z : list or np.array
+        Electrical input impedance of electrodynamic transducer.
+        If given with f_z, will re-calculate TS-params and overwrite any input
+        TS-params of this object.
+    Sd : float
+        Radiating surface of transducer
+    Mms : float
+        Moving mass of transducer
+    Rec : float
+        Electrical Resistance of coil
+    Lec : float
+        Electrical Inductance of coil
+    Qes : float
+        Electrical quality factor
+    Qms : float
+        Mechanical quality factor
+    Qts : float
+        Total quality factor, resulting from Qes and Qms
+    Cms : float
+        Compliance of mechanical suspension
+    Rms : float
+        Resistance of mechanical suspension
+    fs : float
+        Resonance frequency
+    Bl : float
+        Force factor
+    """
     def __init__(
             self,
             f_z = None,
@@ -25,9 +64,9 @@ class ElectroDynamic(Transducers):
             Mms = None,
             Rec = None,
             Lec = None,
-            Qts = None,
             Qes = None,
             Qms = None,
+            Qts = None,
             Cms = None,
             Rms = None,
             fs = None,
