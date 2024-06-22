@@ -26,11 +26,11 @@ class ElectroDynamic(Transducers):
     Parameters
     ----------
     f_z : list or np.array
-        frequency vector of z
+        frequency vector of z, measured on infinite Baffle
         If given with z, will re-calculate TS-params and overwrite any input
         TS-params of this object.
     z : list or np.array
-        Electrical input impedance of electrodynamic transducer.
+        Electrical input impedance, measured on infinite Baffle
         If given with f_z, will re-calculate TS-params and overwrite any input
         TS-params of this object.
     Sd : float
@@ -55,34 +55,37 @@ class ElectroDynamic(Transducers):
         Resonance frequency
     Bl : float
         Force factor
+
+    TODO: Examples
+    --------
     """
     def __init__(
             self,
             f_z = None,
             z = None,
             Sd = None,
-            Mms = None,
+            fs = None,
             Rec = None,
             Lec = None,
             Qes = None,
-            Qms = None,
             Qts = None,
+            Mms = None,
             Cms = None,
             Rms = None,
-            fs = None,
+            Qms = None,
             Bl = None,
     ):
         self.Sd = Sd
         param_list = [
-            Mms,
+            fs ,
             Rec,
             Lec,
-            Qts,
             Qes,
-            Qms,
+            Mms,
             Cms,
             Rms,
-            fs ,
+            Qms,
+            Qts,
             Bl ,
         ]
         non_none_param_idcs = [
@@ -132,11 +135,35 @@ class ElectroDynamic(Transducers):
         if plot_params:
             self.plot_z_params()
 
-    def ts_to_imp(self, ):
-        # TODO: Define proper frequency range if f_z not given
-        omega = self.f_z*2*np.pi
+    def ts_to_imp(self, freq_range=None, freq_resolution=None, ):
+        """
+        Return complex-valued impedance curve from TS-parameters
+
+        Parameters
+        ----------
+        freq_range : list or array [low_end, high_end]
+            Frequency range of returned impedance curve, optional.
+            Not necessary if f_z and z is given to object beforehand
+        freq_resolution :
+            Frequency resolution of returned impedance curve, optional.
+            Not necessary if f_z and z is given to object beforehand
+        
+        Returns
+        ------- 
+        f_es : np.array
+            Frequency vector of z
+        z_es : np.array, complex
+            Modeled electrical input impedance, derived from TS-parameters
+        """
+        if self.f_z is not None:
+            f_es = self.f_z
+            omega = f_es*2*np.pi
+        else:
+            f_es = np.arange(freq_range[0], freq_range[1], freq_resolution)
+            omega = 2*np.pi*f_es
         z_ms = self.Rms + 1j*omega*self.Mms + (1 / (1j*omega*self.Cms))
-        z_ls = self.Rec + 1j*omega*self.Lec + (self.Bl**2 / z_ms)
+        z_es = self.Rec + 1j*omega*self.Lec + (self.Bl**2 / z_ms)
+        return f_es, z_es,
 
     def _manual_pick_fs(self, f_z, z):
         fig, ax = al_plt.plot_rfft_freq(f_z, z, xscale='log', )
@@ -182,9 +209,8 @@ class ElectroDynamic(Transducers):
 
     def _update_dependent_params(self):
         # Update dependent variables when their parameters are changed/set.
-        # TODO: Define dependent and independent variables, like:
-        # Dependent: Qts = Qms*Qes/(Qms+Qes), Cms = ..., Rms = 
-        # Independent: Lec, Rec, Sd, etc.
+        # TODO: Implement user feedback: input Qts (e.g. datasheet) vs.
+        #   calculated Qts fromt his method
         self.Qts = self.Qms * self.Qes / (self.Qms + self.Qes)
         self.Cms = 1 / ((2*np.pi*self.fs)**2 * self.Mms )
         self.Rms = 1 / (2*np.pi*self.fs*self.Qms*self.Cms)
