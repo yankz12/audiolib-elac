@@ -264,6 +264,7 @@ class ElectroDynamic(Transducers):
         self.Cms = 1 / ((2*np.pi*self.fs)**2 * self.Mms)
         self.Rms = 1 / (2*np.pi*self.fs*self.Qms*self.Cms)
         self.Bl = np.sqrt(self.Rms*(self._z_max - self.Rec))
+        # self.Vas = (self.Sd*self.c)**2*self.rho/((2*np.pi*self.fs)**2*self.Mms)
 
     def print_ts(self):
         # TODO: Implement standardized unit-SI-prefix-conversion in tools.
