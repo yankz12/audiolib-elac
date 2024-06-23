@@ -46,6 +46,12 @@ class ElectroDynamic(Transducers):
     TODO: Update Parameters with added mass inputs
     Parameters
     ----------
+    name : str
+        Name of the transducer/model
+    c : float
+        Speed of sound during impedance measurement [m/s]
+    rho : float
+        Air density during impedance measurement [kg/m³]
     f_z : list or np.array
         frequency vector of z, on infinite Baffle.
         If given with z, will re-calculate TS-params and overwrite any input
@@ -248,7 +254,6 @@ class ElectroDynamic(Transducers):
         Mms : float
             Moving mass, derived by Mms = added_mass / ((fs / fs_new)**2 - 1)
         """
-        # TODO: Write this, modify imp_to_ts in order to re-use its fs calc
         fs_new, _ = self._manual_pick_fs(
             self.f_z_added_mass,
             self.z_added_mass,
@@ -264,6 +269,13 @@ class ElectroDynamic(Transducers):
         pass
 
     def plot_z_params(self, ):
+        """
+        Plot the parameters, from which the TS-parameters are calculated 
+        (r0, f1, f2, fs, Rec) on top of the input impedance plot. This is to
+        verify the integrity of the calculation.
+
+        No input parameters, no returns, just opens a plot.
+        """
         v_Rec = self.Rec*np.ones(len(self.f_z))
         v_z_f1_f2 = np.sqrt(self._r0)*self.Rec*np.ones(len(self.f_z))
         _, ax = al_plt.plot_rfft_freq(
@@ -282,9 +294,13 @@ class ElectroDynamic(Transducers):
         plt.show(block=False)
 
     def _update_dependent_ts_params(self):
-        # Update dependent variables when their parameters are changed/set.
-        # TODO: Implement user feedback: input Qts (e.g. datasheet) vs.
-        #   calculated Qts fromt his method
+        """
+        Update dependent variables when their parameters are changed/set.
+        Dependent variables are e.g. Qts = Qms*Qes / (Qms+Qes), since it depends
+        on other TS-parameters, which have to be calculated beforehand.
+        TODO: Implement user feedback: input Qts (e.g. datasheet) vs.
+          calculated Qts fromt his method
+        """
         self.Qms = self.fs*np.sqrt(self._r0) / (self._f2 - self._f1)
         self.Qes = self.Qms / (self._r0 - 1)
         self.Qts = self.Qms * self.Qes / (self.Qms + self.Qes)
