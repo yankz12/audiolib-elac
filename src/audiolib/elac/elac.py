@@ -8,6 +8,10 @@ from matplotlib.backend_bases import MouseButton
 from abc import ABC, abstractmethod
 
 class Transducers(ABC):
+    def __init__(self, c, rho, ):
+        self.c = c
+        self.rho = rho
+
     @abstractmethod
     def get_sensitivity(self):
         pass
@@ -15,6 +19,22 @@ class Transducers(ABC):
     @abstractmethod
     def get_pressure_resp(self):
         pass
+
+    @property
+    def c(self):
+        return self._c
+    
+    @c.setter
+    def c(self, c):
+        self._c = c
+
+    @property
+    def rho(self):
+        return self._rho
+    
+    @rho.setter
+    def rho(self, rho):
+        self._rho = rho
 
 class ElectroDynamic(Transducers):
     """
@@ -69,6 +89,8 @@ class ElectroDynamic(Transducers):
     def __init__(
             self,
             name = None,
+            c = None,
+            rho = None,
             f_z = None,
             z = None,
             f_z_added_mass = None,
@@ -88,6 +110,8 @@ class ElectroDynamic(Transducers):
     ):
         self.name = name
         self.Sd = Sd
+        self._c = c
+        self._rho = rho
         param_list = [
             fs ,
             Rec,
@@ -137,7 +161,7 @@ class ElectroDynamic(Transducers):
             self.Bl = Bl
             self._update_dependent_ts_params(plot_params=False)
 
-    def imp_to_ts(self, added_mass_available=True, plot_params=True):
+    def imp_to_ts(self, added_mass_available=True, plot_params=False):
         # TODO: Add Mms calculation from added mass method
         # TODO: Add Lec calculation from imaginary part average divided by omega
         self.Rec = self.z[0]
@@ -157,7 +181,6 @@ class ElectroDynamic(Transducers):
         )
         self._f2 = self.f_z[idx_f2]
         self._update_dependent_ts_params()
-
         if plot_params:
             self.plot_z_params()
 
@@ -264,23 +287,44 @@ class ElectroDynamic(Transducers):
         self.Cms = 1 / ((2*np.pi*self.fs)**2 * self.Mms)
         self.Rms = 1 / (2*np.pi*self.fs*self.Qms*self.Cms)
         self.Bl = np.sqrt(self.Rms*(self._z_max - self.Rec))
-        # self.Vas = (self.Sd*self.c)**2*self.rho/((2*np.pi*self.fs)**2*self.Mms)
+        self.Vas = (self.Sd*self.c)**2*self.rho/((2*np.pi*self.fs)**2*self.Mms)
 
     def print_ts(self):
         # TODO: Implement standardized unit-SI-prefix-conversion in tools.
         print('\n')
         print(79*'-')
         print(f'{self.name}: Thiele-Small-Parameters')
-        print(f'  Sd = {self.Sd} m²')
-        print(f'  Mms = {self.Mms} kg')
-        print(f'  Rec = {np.round(self.Rec, 2)} Ohm')
-        # print(f'Lec = {self.Lec} H') # TODO: Implement Lec from imag part
-        print(f'  Qts = {self.Qts}')
-        print(f'  Qes = {self.Qes}')
-        print(f'  Qms = {self.Qms}')
-        print(f'  Cms = {self.Cms} m/N')
-        print(f'  Rms = {self.Rms} kg/s')
         print(f'  fs = {np.round(self.fs, 2)} Hz')
+        print(f'  Sd = {self.Sd} m²')
+        print(f'  Vas = {np.round(self.Vas*1000, 3)} L')
+        print(f'  Rec = {np.round(self.Rec, 2)} Ohm')
+        # TODO: Implement Lec from imag part. Convert abs/rad to real/imag, then
+        # Amplitude*exp(1j*Angle_Radians)
+        # print(f'Lec = {self.Lec} H') 
+        print(f'  Qts = {np.round(self.Qts, 3)}')
+        print(f'  Qes = {np.round(self.Qes, 3)}')
+        print(f'  Qms = {np.round(self.Qms, 3)}')
+        print(f'  Mms = {np.round(self.Mms*1000, 2)} g')
+        print(f'  Cms = {np.round(self.Cms*1e6, 2)} µm/N')
+        print(f'  Rms = {np.round(self.Rms, 2)} kg/s')
         print(f'  Bl = {np.round(self.Bl, 2)} Tm')
         print(79*'-')
         print('\n')
+
+    @property
+    def c(self):
+        return self._c
+
+    @c.setter
+    def c(self, c):
+        self._c = c
+        self._update_dependent_ts_params()
+
+    @property
+    def rho(self):
+        return self._rho
+
+    @rho.setter
+    def rho(self, rho):
+        self._rho = rho
+        self._update_dependent_ts_params()
