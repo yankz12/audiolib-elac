@@ -4,7 +4,16 @@ A small library to speed up programming with electroacoustic transducers
 
 ## Install
 
-Download as zip and extract or clone the repository via
+Be aware that this package requires the audiolib.plotting and audiolib.tools modules in order to work.
+Install beforehand from here:
+
+`https://github.com/yankz12/audiolib-tools`
+
+and from here:
+
+`https://github.com/yankz12/audiolib-plotting`
+
+Now install elac: Download as zip and extract or clone the repository via
 
 `git clone https://github.com/yankz12/audiolib-elac.git`
 
