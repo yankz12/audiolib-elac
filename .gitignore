@@ -4,7 +4,7 @@ __pycache__/
 *$py.class
 
 # Test Datasets
-test/
+# test/
 
 # C extensions
 *.so
