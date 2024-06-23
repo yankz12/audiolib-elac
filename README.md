@@ -21,10 +21,11 @@ Install the package via pip installation into the directory
 
 `pip install ./audiolib-elac`
 
-Import the package via
+Import the package e.g. via
 
-`from audiolib import elac`
+`from audiolib.elac import ElectroDynamic`
 
 and create objects like
 
-`speaker = elac.Transducers.ElectroDynamic(...)`
+`speaker = ElectroDynamic(...)`
+
