@@ -134,6 +134,7 @@ class ElectroDynamic(Transducers):
             added_mass,
         ]
         if imp_input_given:
+            # TODO: Perform format parsing on z: imag/real, abs/rad?
             self.f_z = f_z
             self.z = z
             if (len(not_none_param_idcs) > 0):
@@ -162,7 +163,6 @@ class ElectroDynamic(Transducers):
             self._update_dependent_ts_params(plot_params=False)
 
     def imp_to_ts(self, added_mass_available=True, plot_params=False):
-        # TODO: Add Mms calculation from added mass method
         # TODO: Add Lec calculation from imaginary part average divided by omega
         self.Rec = self.z[0]
         self.fs, self._z_max = self._manual_pick_fs(self.f_z, self.z, 'Free-Air')
@@ -173,7 +173,7 @@ class ElectroDynamic(Transducers):
         Z_at_f1_f2 = np.sqrt(self._r0)*self.Rec
         idx_f1 = al_tls.closest_idx_to_val(arr=self.z[:idx_fs], val=Z_at_f1_f2)
         self._f1  = self.f_z[idx_f1]
-        # Limit f2 search frequency range to [fs:(2*fs)] to avoid Zmax@Lec:
+        # Limit f2 search frequency range to [fs:(2*fs)] to avoid Zmax@ high f:
         idx_limit_high_freq_f2 = int(2*idx_fs)
         idx_f2 = idx_fs + al_tls.closest_idx_to_val(
             arr = self.z[idx_fs:idx_limit_high_freq_f2],
@@ -204,8 +204,12 @@ class ElectroDynamic(Transducers):
         z_es : np.array, complex
             Modeled electrical input impedance, derived from TS-parameters
         """
+        raise NotImplementedError(
+            f'Cannot create impedance curve from TS-Params: '+
+            f'Lec-calculation not yet implemented.'
+        )
         if self.f_z is not None:
-            f_es = self.f_z
+            f_es = np.array(self.f_z)
             omega_es = f_es*2*np.pi
         else:
             f_es = np.arange(freq_range[0], freq_range[1], freq_resolution)
