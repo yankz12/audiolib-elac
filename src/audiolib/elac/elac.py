@@ -8,7 +8,7 @@ from matplotlib.backend_bases import MouseButton
 from abc import ABC, abstractmethod
 
 # Frequency region in which to derive Lec from
-LEC_CALC_FREQ_RANGE = [1000, 2000]
+LEC_CALC_FREQ_RANGE = [500, 2000]
 
 class Transducers(ABC):
     def __init__(self, c, rho, ):
@@ -55,11 +55,11 @@ class ElectroDynamic(Transducers):
         Speed of sound during impedance measurement [m/s]
     rho : float
         Air density during impedance measurement [kg/m³]
-    f_z : list or np.array
+    f_z : list or np.array, obsolete if all TS-parameters are given
         frequency vector of z, on infinite Baffle.
         If given with z, will re-calculate TS-params and overwrite any input
         TS-params of this object.
-    z : list or np.array
+    z : list or np.array, obsolete if all TS-parameters are given
         Electrical input impedance, on infinite Baffle.
         If given with f_z, will re-calculate TS-params and overwrite any input
         TS-params of this object.
@@ -69,6 +69,10 @@ class ElectroDynamic(Transducers):
     z_added_mass : list or np.array, optional
         Electrical input impedance of added mass driver, on infinite Baffle.
         Will not calculate Mms if not given.
+    added_mass : float, optional
+        Mass in kg
+    Lec_estimation_range : array of len 2, obsolete if all TS-parameters given
+        Frequency range in which to estimate Lec
     Sd : float
         Radiating surface of transducer
     Mms : float
@@ -102,10 +106,12 @@ class ElectroDynamic(Transducers):
             c = None,
             rho = None,
             f_z = None,
-            z = None,
+            z_abs = None,
+            z_rad = None,
             f_z_added_mass = None,
             z_added_mass = None,
             added_mass = None,
+            Lec_estimation_range = None,
             Sd = None,
             fs = None,
             Rec = None,
@@ -119,6 +125,7 @@ class ElectroDynamic(Transducers):
             Bl = None,
     ):
         self.name = name
+        self.Lec_estimation_range = Lec_estimation_range
         self.Sd = Sd
         self._c = c
         self._rho = rho
@@ -137,7 +144,9 @@ class ElectroDynamic(Transducers):
         not_none_param_idcs = [
             i for i in range(len(param_list)) if param_list[i] != None
         ] # Get idcs of input params which are not None
-        imp_input_given = (f_z is not None) and (z is not None)
+        imp_input_given = (
+            (f_z is not None) and (z_abs is not None) and (z_rad is not None)
+        )
         added_mass_imp_input_given = not None in [
             f_z_added_mass,
             z_added_mass,
@@ -146,7 +155,8 @@ class ElectroDynamic(Transducers):
         if imp_input_given:
             # TODO: Perform format parsing on z: imag/real, abs/rad?
             self.f_z = f_z
-            self.z = z
+            self.z_abs = z_abs
+            self.z_rad = z_rad
             if (len(not_none_param_idcs) > 0):
                 warnings.warn(
                     'Impedance curve and TS-Params given: Will overwrite given ' 
@@ -154,7 +164,7 @@ class ElectroDynamic(Transducers):
                 )
             if added_mass_imp_input_given:
                 self.f_z_added_mass = f_z_added_mass
-                self.z_added_mass = z_added_mass
+                self.z_abs_added_mass = z_added_mass
                 self.added_mass = added_mass
             else:
                 warnings.warn(
@@ -174,22 +184,23 @@ class ElectroDynamic(Transducers):
 
     def imp_to_ts(self, added_mass_available=True, plot_params=False):
         # TODO: Add Lec calculation from imaginary part average divided by omega
-        self.Rec = self.z[0]
-        self.fs, self._z_max = self._manual_pick_fs(self.f_z, self.z, 'Free-Air')
+        self.Rec = self.z_abs[0]
+        self.fs, self._z_max = self._manual_pick_fs(self.f_z, self.z_abs, 'Free-Air')
         if added_mass_available:
             self.Mms = self._calc_mms_via_added_mass()
         idx_fs = al_tls.closest_idx_to_val(arr=self.f_z, val=self.fs)
         self._r0 = self._z_max / self.Rec
         Z_at_f1_f2 = np.sqrt(self._r0)*self.Rec
-        idx_f1 = al_tls.closest_idx_to_val(arr=self.z[:idx_fs], val=Z_at_f1_f2)
+        idx_f1 = al_tls.closest_idx_to_val(arr=self.z_abs[:idx_fs], val=Z_at_f1_f2)
         self._f1  = self.f_z[idx_f1]
         # Limit f2 search frequency range to [fs:(2*fs)] to avoid Zmax@ high f:
         idx_limit_high_freq_f2 = int(2*idx_fs)
         idx_f2 = idx_fs + al_tls.closest_idx_to_val(
-            arr = self.z[idx_fs:idx_limit_high_freq_f2],
+            arr = self.z_abs[idx_fs:idx_limit_high_freq_f2],
             val = Z_at_f1_f2,
         )
         self._f2 = self.f_z[idx_f2]
+        self.Lec = self._estimate_Lec()
         self._update_dependent_ts_params()
         if plot_params:
             self.plot_z_params()
@@ -202,10 +213,10 @@ class ElectroDynamic(Transducers):
         ----------
         freq_range : list or array [low_end, high_end]
             Frequency range of returned impedance curve, optional.
-            Not necessary if f_z and z is given to object beforehand
+            Not necessary if f_z, z_abs and z_rad is given to object beforehand
         freq_resolution :
             Frequency resolution of returned impedance curve, optional.
-            Not necessary if f_z and z is given to object beforehand
+            Not necessary if f_z , z_abs and z_rad is given to object beforehand
         
         Returns
         ------- 
@@ -214,10 +225,6 @@ class ElectroDynamic(Transducers):
         z_es : np.array, complex
             Modeled electrical input impedance, derived from TS-parameters
         """
-        raise NotImplementedError(
-            f'Cannot create impedance curve from TS-Params: '+
-            f'Lec-calculation not yet implemented.'
-        )
         if self.f_z is not None:
             f_es = np.array(self.f_z)
             omega_es = f_es*2*np.pi
@@ -246,6 +253,20 @@ class ElectroDynamic(Transducers):
         zmax = fs_selection[0][1]
         return fs, zmax
 
+    def _estimate_Lec(self):
+        z_complex = self.z_abs*np.exp(1j*np.array(self.z_rad))
+        omega = 2*np.pi*np.array(self.f_z)
+        low_idx = al_tls.closest_idx_to_val(
+            arr=self.f_z, val=self.Lec_estimation_range[0]
+        )
+        high_idx = al_tls.closest_idx_to_val(
+            arr=self.f_z, val=self.Lec_estimation_range[1]
+        )
+        Lec = np.mean(
+            z_complex.imag[low_idx:high_idx] / omega[low_idx:high_idx]
+        )
+        return Lec
+
     def _calc_mms_via_added_mass(self, ):
         """
         Parameters
@@ -260,7 +281,7 @@ class ElectroDynamic(Transducers):
         """
         fs_new, _ = self._manual_pick_fs(
             self.f_z_added_mass,
-            self.z_added_mass,
+            self.z_abs_added_mass,
             'Added Mass',
         )
         Mms = self.added_mass / ((self.fs / fs_new)**2 - 1)
@@ -282,9 +303,9 @@ class ElectroDynamic(Transducers):
         """
         v_Rec = self.Rec*np.ones(len(self.f_z))
         v_z_f1_f2 = np.sqrt(self._r0)*self.Rec*np.ones(len(self.f_z))
-        _, ax = al_plt.plot_rfft_freq(
+        fig, ax = al_plt.plot_rfft_freq(
             self.f_z,
-            self.z,
+            self.z_abs,
             xscale = 'log',
             yscale='lin',
         )
@@ -294,15 +315,16 @@ class ElectroDynamic(Transducers):
         ax.plot(self.f_z, v_z_f1_f2, linestyle='--', label=r'$\sqrt{r_0} R_{ec}$')
         ax.plot(self.f_z, v_Rec, linestyle='--', label=r'$R_{ec}$')
         ax.axvspan(
-            xmin=LEC_CALC_FREQ_RANGE[0],
-            xmax=LEC_CALC_FREQ_RANGE[1],
-            alpha=.3,
+            xmin=self.Lec_estimation_range[0],
+            xmax=self.Lec_estimation_range[1],
+            alpha=.5,
             color='b',
             label='$L_{{ec}}$ est. range'
         )
         ax.set_ylabel(r'|Z| [$\Omega$]')
         ax.legend()
         plt.show(block=False)
+        return fig, ax
 
     def _update_dependent_ts_params(self):
         """
@@ -331,7 +353,7 @@ class ElectroDynamic(Transducers):
         print(f'  Rec = {np.round(self.Rec, 2)} Ohm')
         # TODO: Implement Lec from imag part. Convert abs/rad to real/imag, then
         # Amplitude*exp(1j*Angle_Radians)
-        # print(f'Lec = {self.Lec} H') 
+        print(f'  Lec = {np.round(self.Lec*1000, 2)} mH') 
         print(f'  Qts = {np.round(self.Qts, 3)}')
         print(f'  Qes = {np.round(self.Qes, 3)}')
         print(f'  Qms = {np.round(self.Qms, 3)}')
