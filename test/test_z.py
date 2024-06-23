@@ -31,9 +31,6 @@ dayton_ls10 = ElectroDynamic(
     Sd = Sd,
 )
 
-# dayton_ls10.plot_z_params()
+dayton_ls10.plot_z_params()
 dayton_ls10.print_ts()
 
-f_es, z_es = dayton_ls10.ts_to_imp()
-fig, ax = al_plt.plot_rfft_freq(f_es, np.abs(z_es), xscale='log')
-plt.show(block=False)
