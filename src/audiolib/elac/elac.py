@@ -7,6 +7,9 @@ import warnings
 from matplotlib.backend_bases import MouseButton
 from abc import ABC, abstractmethod
 
+# Frequency region in which to derive Lec from
+LEC_CALC_FREQ_RANGE = [1000, 2000]
+
 class Transducers(ABC):
     def __init__(self, c, rho, ):
         self.c = c
@@ -92,6 +95,7 @@ class ElectroDynamic(Transducers):
     TODO: Examples
     --------
     """
+
     def __init__(
             self,
             name = None,
@@ -289,6 +293,13 @@ class ElectroDynamic(Transducers):
         ax.axvline(x=self.fs, ymin=0, ymax=100, linestyle='--', color='k', label=r'f$_s$')
         ax.plot(self.f_z, v_z_f1_f2, linestyle='--', label=r'$\sqrt{r_0} R_{ec}$')
         ax.plot(self.f_z, v_Rec, linestyle='--', label=r'$R_{ec}$')
+        ax.axvspan(
+            xmin=LEC_CALC_FREQ_RANGE[0],
+            xmax=LEC_CALC_FREQ_RANGE[1],
+            alpha=.3,
+            color='b',
+            label='$L_{{ec}}$ est. range'
+        )
         ax.set_ylabel(r'|Z| [$\Omega$]')
         ax.legend()
         plt.show(block=False)
