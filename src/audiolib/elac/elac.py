@@ -183,7 +183,6 @@ class ElectroDynamic(Transducers):
             self._update_dependent_ts_params(plot_params=False)
 
     def imp_to_ts(self, added_mass_available=True, plot_params=False):
-        # TODO: Add Lec calculation from imaginary part average divided by omega
         self.Rec = self.z_abs[0]
         self.fs, self._z_max = self._manual_pick_fs(self.f_z, self.z_abs, 'Free-Air')
         if added_mass_available:
@@ -351,8 +350,6 @@ class ElectroDynamic(Transducers):
         print(f'  Sd = {self.Sd} m²')
         print(f'  Vas = {np.round(self.Vas*1000, 3)} L')
         print(f'  Rec = {np.round(self.Rec, 2)} Ohm')
-        # TODO: Implement Lec from imag part. Convert abs/rad to real/imag, then
-        # Amplitude*exp(1j*Angle_Radians)
         print(f'  Lec = {np.round(self.Lec*1000, 2)} mH') 
         print(f'  Qts = {np.round(self.Qts, 3)}')
         print(f'  Qes = {np.round(self.Qes, 3)}')
