@@ -235,10 +235,17 @@ class ElectroDynamic(Transducers):
         return f_es, z_es,
 
     def _manual_pick_fs(self, f_z, z, z_explanation, ):
+        """
+        Interactive pyplot Figure to manually choose the point of (fs, Z_max).
+        Use the mouse to zoom into the plot. Hover over the point of choice and
+        confirm by hitting the "Space"-Button.
+        """
         fig, ax = al_plt.plot_rfft_freq(f_z, z, xscale='log', )
         ax.set_title(f'{z_explanation}:\nManually hover over f$_s$ and Z$_{{max}}$ '+ 
-                     fr'and select with "Space"-Button.')
+                     fr'and confirm with any Button .')
         ax.set_ylabel(r'|Z| [$\Omega$]')
+        cursor = al_plt.BlittedCursor(ax)
+        fig.canvas.mpl_connect('motion_notify_event', cursor.on_mouse_move)
         fs_selection = plt.ginput(
             n=1,
             timeout=0,
@@ -368,6 +375,7 @@ class ElectroDynamic(Transducers):
     @c.setter
     def c(self, c):
         self._c = c
+        print('\nRecalculating TS-params from new c ... ')
         self._update_dependent_ts_params()
 
     @property
@@ -388,4 +396,5 @@ class ElectroDynamic(Transducers):
     @rho.setter
     def rho(self, rho):
         self._rho = rho
+        print('\nRecalculating TS-params from new rho ... ')
         self._update_dependent_ts_params()
