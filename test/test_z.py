@@ -46,4 +46,5 @@ al_plt.plot_rfft_freq(
     ax=ax,
     color='pink',
     linestyle='--',
+    label='Modeled impedance',
 )

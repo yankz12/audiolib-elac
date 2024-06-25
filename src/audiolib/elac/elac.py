@@ -46,33 +46,39 @@ class ElectroDynamic(Transducers):
     given. Alternatively, Thiele-Small parameters can be passed during 
     initilization in order to calculate modeled impedance curve from parameters.
     
-    TODO: Update Parameters with added mass inputs
     Parameters
     ----------
-    name : str
+    name : str, optional, defaults to empty string
         Name of the transducer/model
-    c : float
+    c : float, optional
         Speed of sound during impedance measurement [m/s]
-    rho : float
+    rho : float,  optional
         Air density during impedance measurement [kg/m³]
     f_z : list or np.array, obsolete if all TS-parameters are given
         frequency vector of z, on infinite Baffle.
-        If given with z, will re-calculate TS-params and overwrite any input
-        TS-params of this object.
-    z : list or np.array, obsolete if all TS-parameters are given
-        Electrical input impedance, on infinite Baffle.
-        If given with f_z, will re-calculate TS-params and overwrite any input
-        TS-params of this object.
+        If given with z_abs and z_rad, will re-calculate TS-params and overwrite
+        any input TS-params of this instance.
+    z_abs : list or np.array, obsolete if all TS-parameters are given
+        Absolute values of Electrical input impedance, on infinite Baffle.
+        If given with f_z and z_rad, will re-calculate TS-params and overwrite
+        any input TS-params of this instance.
+    z_rad : list or np.array, obsolete if all TS-parameters are given
+        Phase of Electrical input impedance in radians, on infinite Baffle.
+        If given with f_z and z_abs, will re-calculate TS-params and overwrite
+        any input TS-params of this instance.
     f_z_added_mass : list or np.array, optional
         frequency vector of z of added mass driver, on infinite Baffle.
         Will not calculate Mms if not given.
     z_added_mass : list or np.array, optional
-        Electrical input impedance of added mass driver, on infinite Baffle.
-        Will not calculate Mms if not given.
+        Absolute values of Electrical input impedance of added mass driver,
+        on infinite Baffle. Will not calculate Mms if not given.
     added_mass : float, optional
         Mass in kg
     Lec_estimation_range : array of len 2, obsolete if all TS-parameters given
-        Frequency range in which to estimate Lec
+        Frequency range in which to estimate Lec as a simple inductance.
+        TODO:
+          Implement semi-inductance model: 
+          http://www.cfuttrup.com/Thorborg_31.pdf
     Sd : float
         Radiating surface of transducer
     Mms : float
@@ -96,13 +102,13 @@ class ElectroDynamic(Transducers):
     Bl : float
         Force factor
 
-    TODO: Examples
+    Examples
     --------
     """
 
     def __init__(
             self,
-            name = None,
+            name = '',
             c = None,
             rho = None,
             f_z = None,
@@ -346,7 +352,12 @@ class ElectroDynamic(Transducers):
         self.Cms = 1 / ((2*np.pi*self.fs)**2 * self.Mms)
         self.Rms = 1 / (2*np.pi*self.fs*self.Qms*self.Cms)
         self.Bl = np.sqrt(self.Rms*(self._z_max - self.Rec))
-        self.Vas = (self.Sd*self.c)**2*self.rho/((2*np.pi*self.fs)**2*self.Mms)
+        if self.c is None or self.rho is None:
+            raise TypeError('c and/or rho not defined: Unable to calculate Vas')
+        else:
+            self.Vas = (self.Sd*self.c)**2*self.rho/(
+                (2*np.pi*self.fs)**2*self.Mms
+            )
 
     def print_ts(self):
         # TODO: Implement standardized unit-SI-prefix-conversion in tools.
