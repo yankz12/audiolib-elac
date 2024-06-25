@@ -125,7 +125,7 @@ class ElectroDynamic(Transducers):
             Bl = None,
     ):
         self.name = name
-        self.Lec_estimation_range = Lec_estimation_range
+        self._Lec_estimation_range = Lec_estimation_range
         self.Sd = Sd
         self._c = c
         self._rho = rho
@@ -256,10 +256,10 @@ class ElectroDynamic(Transducers):
         z_complex = self.z_abs*np.exp(1j*np.array(self.z_rad))
         omega = 2*np.pi*np.array(self.f_z)
         low_idx = al_tls.closest_idx_to_val(
-            arr=self.f_z, val=self.Lec_estimation_range[0]
+            arr = self.f_z, val = self._Lec_estimation_range[0]
         )
         high_idx = al_tls.closest_idx_to_val(
-            arr=self.f_z, val=self.Lec_estimation_range[1]
+            arr = self.f_z, val = self._Lec_estimation_range[1]
         )
         Lec = np.mean(
             z_complex.imag[low_idx:high_idx] / omega[low_idx:high_idx]
@@ -314,8 +314,8 @@ class ElectroDynamic(Transducers):
         ax.plot(self.f_z, v_z_f1_f2, linestyle='--', label=r'$\sqrt{r_0} R_{ec}$')
         ax.plot(self.f_z, v_Rec, linestyle='--', label=r'$R_{ec}$')
         ax.axvspan(
-            xmin=self.Lec_estimation_range[0],
-            xmax=self.Lec_estimation_range[1],
+            xmin=self._Lec_estimation_range[0],
+            xmax=self._Lec_estimation_range[1],
             alpha=.5,
             color='b',
             label='$L_{{ec}}$ est. range'
@@ -369,6 +369,17 @@ class ElectroDynamic(Transducers):
     def c(self, c):
         self._c = c
         self._update_dependent_ts_params()
+
+    @property
+    def Lec_estimation_range(self):
+        return self._Lec_estimation_range
+
+    @Lec_estimation_range.setter
+    def Lec_estimation_range(self, Lec_estimation_range):
+        self._Lec_estimation_range = Lec_estimation_range
+        print('\nRecalculating Lec from new estimation range ... ')
+        self._Lec = self._estimate_Lec()
+        print(f'New Lec: {np.round(self._Lec*1000, 2)} mH')
 
     @property
     def rho(self):
