@@ -7,8 +7,36 @@ import warnings
 from matplotlib.backend_bases import MouseButton
 from abc import ABC, abstractmethod
 
-# Frequency region in which to derive Lec from
-LEC_CALC_FREQ_RANGE = [500, 2000]
+# TODO: Implement more beautiful Unit- and prefix-conversion in audiolib.tools
+STANDARD_UNITS = {
+    'fs' : 'Hz',
+    'Sd' : 'cm²',
+    'Vas' : 'L',
+    'Rec' : 'Ohm',
+    'Lec' : 'mH',
+    'Qts' : '',
+    'Qes' : '',
+    'Qms' : '',
+    'Mms' : 'g',
+    'Cms' : 'µm/N',
+    'Rms' : 'kg/s',
+    'Bl' : 'Tm',
+}
+
+STANDARD_PREFIX_CONV = {
+    'fs' : 1,
+    'Sd' : 1e4, # mm² to cm²
+    'Vas' : 1000, # m³ to L
+    'Rec' : 1,
+    'Lec' : 1000, # H to mH
+    'Qts' : 1,
+    'Qes' : 1,
+    'Qms' : 1,
+    'Mms' : 1000, # kg to g
+    'Cms' : 1e6, # m/N to µm/N
+    'Rms' : 1,
+    'Bl' : 1,
+}
 
 class Transducers(ABC):
     def __init__(self, c, rho, ):
@@ -76,7 +104,7 @@ class ElectroDynamic(Transducers):
         Mass in kg
     Lec_estimation_range : array of len 2, obsolete if all TS-parameters given
         Frequency range in which to estimate Lec as a simple inductance.
-        TODO: Implement semi-inductance model: 
+        TODO: Implement semi-inductance model.
     Sd : float
         Radiating surface of transducer
     Mms : float
@@ -119,6 +147,7 @@ class ElectroDynamic(Transducers):
             added_mass = None,
             Lec_estimation_range = None,
             Sd = None,
+            Vas = None,
             fs = None,
             Rec = None,
             Lec = None,
@@ -133,23 +162,19 @@ class ElectroDynamic(Transducers):
         self.name = name
         self._Lec_estimation_range = Lec_estimation_range
         self.Sd = Sd
+        self.Vas = Vas
+        self.fs = fs
+        self.Rec = Rec
+        self.Lec = Lec
+        self.Qes = Qes
+        self.Qts = Qts
+        self.Mms = Mms
+        self.Cms = Cms
+        self.Rms = Rms
+        self.Qms = Qms
+        self.Bl = Bl
         self._c = c
         self._rho = rho
-        param_list = [
-            fs ,
-            Rec,
-            Lec,
-            Qes,
-            Mms,
-            Cms,
-            Rms,
-            Qms,
-            Qts,
-            Bl ,
-        ]
-        not_none_param_idcs = [
-            i for i in range(len(param_list)) if param_list[i] != None
-        ] # Get idcs of input params which are not None
         imp_input_given = (
             (f_z is not None) and (z_abs is not None) and (z_rad is not None)
         )
@@ -158,15 +183,19 @@ class ElectroDynamic(Transducers):
             z_added_mass,
             added_mass,
         ]
+        not_none_ts_params = [
+            key for key,val in self.ts_parameter_dict.items() if val is not None and key != 'Sd'
+        ]
         if imp_input_given:
             # TODO: Perform format parsing on z: imag/real, abs/rad?
             self.f_z = f_z
             self.z_abs = z_abs
             self.z_rad = z_rad
-            if (len(not_none_param_idcs) > 0):
+            if (len(not_none_ts_params) > 0):
                 warnings.warn(
                     'Impedance curve and TS-Params given: Will overwrite given ' 
-                    + 'TS-params by inherent TS-parameter calculation via |Z|.'
+                    + 'TS-params by inherent TS-parameter calculation via '
+                    + 'given impedance curve.'
                 )
             if added_mass_imp_input_given:
                 self.f_z_added_mass = f_z_added_mass
@@ -177,8 +206,8 @@ class ElectroDynamic(Transducers):
                     'Mms not calculated: missing added mass frequency vector ' 
                     + 'and/or added mass impedance vector and/or added weight.'
                 )
-            self.imp_to_ts()
-        if not imp_input_given and (len(not_none_param_idcs) > 0):
+            self.imp_to_ts(added_mass_available=added_mass_imp_input_given)
+        if not imp_input_given and (len(not_none_ts_params) > 0):
             self.Mms = Mms
             self.Rec = Rec
             self.Lec = Lec
@@ -247,10 +276,15 @@ class ElectroDynamic(Transducers):
         confirm by hitting the "Space"-Button.
         """
         fig, ax = al_plt.plot_rfft_freq(f_z, z, xscale='log', )
-        ax.set_title(f'{z_explanation}:\nManually hover over f$_s$ and Z$_{{max}}$ '+ 
-                     fr'and confirm with any Button .')
+        ax.set_title(
+            f'{z_explanation}:' +
+            f'\nManually hover over f$_s$ and Z$_{{max}}$ ' + 
+            f'and confirm with "Space"-Button.' + 
+            f'\nYou can use left mouse button to zoom etc.'
+        )
+        plt.tight_layout()
         ax.set_ylabel(r'|Z| [$\Omega$]')
-        cursor = al_plt.BlittedCursor(ax)
+        cursor = al_plt.BlittedCursor(ax) # Crosshair cursor on plot
         fig.canvas.mpl_connect('motion_notify_event', cursor.on_mouse_move)
         fs_selection = plt.ginput(
             n=1,
@@ -360,24 +394,36 @@ class ElectroDynamic(Transducers):
             )
 
     def print_ts(self):
-        # TODO: Implement standardized unit-SI-prefix-conversion in tools.
         print('\n')
         print(79*'-')
         print(f'{self.name}: Thiele-Small-Parameters')
-        print(f'  fs = {np.round(self.fs, 2)} Hz')
-        print(f'  Sd = {self.Sd} m²')
-        print(f'  Vas = {np.round(self.Vas*1000, 2)} L')
-        print(f'  Rec = {np.round(self.Rec, 2)} Ohm')
-        print(f'  Lec = {np.round(self.Lec*1000, 2)} mH') 
-        print(f'  Qts = {np.round(self.Qts, 2)}')
-        print(f'  Qes = {np.round(self.Qes, 2)}')
-        print(f'  Qms = {np.round(self.Qms, 2)}')
-        print(f'  Mms = {np.round(self.Mms*1000, 2)} g')
-        print(f'  Cms = {np.round(self.Cms*1e6, 2)} µm/N')
-        print(f'  Rms = {np.round(self.Rms, 2)} kg/s')
-        print(f'  Bl = {np.round(self.Bl, 2)} Tm')
+        for key, val in self.ts_parameter_dict.items():
+            val = (
+                'N/A' if val is None else str(
+                    np.round(val*STANDARD_PREFIX_CONV[key], 2)
+                )
+            )
+            print('  ' + key + ' = ' + val + f' {STANDARD_UNITS[key]}')
         print(79*'-')
         print('\n')
+
+    @property
+    def ts_parameter_dict(self,):
+        param_dict = {
+            'fs' : self.fs,
+            'Sd' : self.Sd,
+            'Vas' : self.Vas,
+            'Rec' : self.Rec,
+            'Lec' : self.Lec,
+            'Qts' : self.Qts,
+            'Qes' : self.Qes,
+            'Qms' : self.Qms,
+            'Mms' : self.Mms,
+            'Cms' : self.Cms,
+            'Rms' : self.Rms,
+            'Bl' : self.Bl,
+        }
+        return param_dict
 
     @property
     def c(self):
