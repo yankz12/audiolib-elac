@@ -41,10 +41,10 @@ class Transducers(ABC):
 
 class ElectroDynamic(Transducers):
     """
-    Class to characterize electrodynamic transducers. Complete Thiele-Small 
-    parameters are automatically calculated when added-mass-measurement is
-    given. Alternatively, Thiele-Small parameters can be passed during 
-    initilization in order to calculate modeled impedance curve from parameters.
+    Class to characterize electrodynamic transducers. Able to derive TS-Params
+    from measured electrical input impedance and able to calculate modeled input
+    impedance from given TS-Params. Check README for more practical application
+    explanation.
     
     Parameters
     ----------
@@ -76,9 +76,7 @@ class ElectroDynamic(Transducers):
         Mass in kg
     Lec_estimation_range : array of len 2, obsolete if all TS-parameters given
         Frequency range in which to estimate Lec as a simple inductance.
-        TODO:
-          Implement semi-inductance model: 
-          http://www.cfuttrup.com/Thorborg_31.pdf
+        TODO: Implement semi-inductance model: 
     Sd : float
         Radiating surface of transducer
     Mms : float
@@ -104,6 +102,8 @@ class ElectroDynamic(Transducers):
 
     Examples
     --------
+    See test script in this repository under ../audiolib-elac/test/test_z.py
+    Dataset is a measured impedance of a Dayton Audio LS10-44 woofer.
     """
 
     def __init__(
@@ -353,7 +353,7 @@ class ElectroDynamic(Transducers):
         self.Rms = 1 / (2*np.pi*self.fs*self.Qms*self.Cms)
         self.Bl = np.sqrt(self.Rms*(self._z_max - self.Rec))
         if self.c is None or self.rho is None:
-            raise TypeError('c and/or rho not defined: Unable to calculate Vas')
+            warnings.warn('c and/or rho not defined: Unable to calculate Vas!')
         else:
             self.Vas = (self.Sd*self.c)**2*self.rho/(
                 (2*np.pi*self.fs)**2*self.Mms
@@ -366,12 +366,12 @@ class ElectroDynamic(Transducers):
         print(f'{self.name}: Thiele-Small-Parameters')
         print(f'  fs = {np.round(self.fs, 2)} Hz')
         print(f'  Sd = {self.Sd} m²')
-        print(f'  Vas = {np.round(self.Vas*1000, 3)} L')
+        print(f'  Vas = {np.round(self.Vas*1000, 2)} L')
         print(f'  Rec = {np.round(self.Rec, 2)} Ohm')
         print(f'  Lec = {np.round(self.Lec*1000, 2)} mH') 
-        print(f'  Qts = {np.round(self.Qts, 3)}')
-        print(f'  Qes = {np.round(self.Qes, 3)}')
-        print(f'  Qms = {np.round(self.Qms, 3)}')
+        print(f'  Qts = {np.round(self.Qts, 2)}')
+        print(f'  Qes = {np.round(self.Qes, 2)}')
+        print(f'  Qms = {np.round(self.Qms, 2)}')
         print(f'  Mms = {np.round(self.Mms*1000, 2)} g')
         print(f'  Cms = {np.round(self.Cms*1e6, 2)} µm/N')
         print(f'  Rms = {np.round(self.Rms, 2)} kg/s')

@@ -29,3 +29,22 @@ and create objects like
 
 `speaker = ElectroDynamic(...)`
 
+## Application
+
+The two practical applications are:
+    1.  After electrical input impedance measurement:
+        Give spectrum of electrical input impedance of the speaker without
+        and with added mass to the membrane (c, rho, f_z, z_abs, z_rad,
+        f_z_added_mass, z_added_mass, added_mass). The instance will
+        automatically calculate the Thiele-Small-parameters. The
+        TS-parameters can be extracted with ElectroDynamic.Qts,
+        ElectroDynamic.Mms, etc.
+        The modeled electrical input impedance spectrum, derived from the
+        TS-parameters, can be checked via f_es, z_es = ts_to_imp()
+    2.  Only TS-Parameters are known, no measurement present:
+        Give all known TS-parameters. The modeled electrical input
+        impedance, derived from the TS-parameters, can be checked via 
+        f_es, z_es = ts_to_imp()
+Be aware that Lec is only modeled as a simple inductance, which will give 
+wrong impedance info for high frequencies. Implementation of
+semi-inductance-model yet to come: (http://www.cfuttrup.com/Thorborg_31.pdf)
