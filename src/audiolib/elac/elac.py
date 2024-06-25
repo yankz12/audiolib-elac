@@ -185,7 +185,7 @@ class ElectroDynamic(Transducers):
         ]
         not_none_ts_params = [
             key for key,val in self.ts_parameter_dict.items() if val is not None and key != 'Sd'
-        ]
+        ] # TODO: make Sd exeption more beautiful or independent from dict
         if imp_input_given:
             # TODO: Perform format parsing on z: imag/real, abs/rad?
             self.f_z = f_z
@@ -436,6 +436,16 @@ class ElectroDynamic(Transducers):
         self._update_dependent_ts_params()
 
     @property
+    def rho(self):
+        return self._rho
+
+    @rho.setter
+    def rho(self, rho):
+        self._rho = rho
+        print('\nRecalculating TS-params from new rho ... ')
+        self._update_dependent_ts_params()
+
+    @property
     def Lec_estimation_range(self):
         return self._Lec_estimation_range
 
@@ -445,13 +455,3 @@ class ElectroDynamic(Transducers):
         print('\nRecalculating Lec from new estimation range ... ')
         self._Lec = self._estimate_Lec()
         print(f'New Lec: {np.round(self._Lec*1000, 2)} mH')
-
-    @property
-    def rho(self):
-        return self._rho
-
-    @rho.setter
-    def rho(self, rho):
-        self._rho = rho
-        print('\nRecalculating TS-params from new rho ... ')
-        self._update_dependent_ts_params()
