@@ -31,9 +31,11 @@ and create objects like
 
 ## Application
 
-The two practical applications are:
+The three practical applications are:
 
-1. After electrical input impedance measurement: Give spectrum of electrical input impedance of the speaker without and with added mass to the membrane (`c, rho, f_z, z_abs, z_rad, f_z_added_mass, z_added_mass, added_mass`). The instance will automatically calculate the Thiele-Small-parameters. The TS-parameters can be extracted with ElectroDynamic.Qts, ElectroDynamic.Mms, etc.; The modeled electrical input impedance spectrum, derived from the TS-parameters, can be checked via `f_es, z_es = ts_to_imp()`. See `./test/test_z.py` for example script.
+1. After electrical input impedance measurement: Give spectrum of electrical input impedance of the speaker without and with added mass to the membrane (`c, rho, f_z, z_abs, z_rad, f_z_added, z_added, added_element_quantity`). The instance will automatically calculate the Thiele-Small-parameters. The TS-parameters can be extracted with ElectroDynamic.Qts, ElectroDynamic.Mms, etc.; The modeled electrical input impedance spectrum, derived from the TS-parameters, can be checked via `f_es, z_es = ts_to_imp()`. See `./test/test_z.py` for example script.
+
+1. After electrical input impedance measurement: Give spectrum of electrical input impedance of the speaker without and with added volume to the speaker (`c, rho, f_z, z_abs, z_rad, f_z_added, z_added, added_element_quantity`). The instance will automatically calculate the Thiele-Small-parameters. The TS-parameters can be extracted with e.g. ElectroDynamic.Qts, ElectroDynamic.Mms, etc.; The modeled electrical input impedance spectrum, derived from the TS-parameters, can be checked via `f_es, z_es = ts_to_imp()`. See `./test/test_z.py` for example script.
 
 2.  Only TS-Parameters are known, no measurement present: Give all known TS-parameters. The modeled electrical input impedance, derived from the TS-parameters, can be checked via `f_es, z_es = ts_to_imp()`
 
