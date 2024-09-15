@@ -145,6 +145,9 @@ class ElectroDynamic(Transducers):
             f_z_added_mass = None,
             z_added_mass = None,
             added_mass = None,
+            f_z_added_vol = None,
+            z_added_vol = None,
+            added_vol = None,
             Lec_estimation_range = None,
             Sd = None,
             Vas = None,
@@ -183,9 +186,20 @@ class ElectroDynamic(Transducers):
             z_added_mass,
             added_mass,
         ]
+        added_vol_imp_input_given = not None in [
+            f_z_added_vol,
+            z_added_vol,
+            added_vol,
+        ]
+        if added_mass_imp_input_given and added_vol_imp_input_given:
+            warnings.warn(
+                'Ambiguity issue: Added volume and added mass method chosen.' 
+                + 'No Mms calculated. Decide for either one of the two.'
+            )
         not_none_ts_params = [
             key for key,val in self.ts_parameter_dict.items() if val is not None and key != 'Sd'
-        ] # TODO: make Sd exeption more beautiful or independent from dict
+        ] # List alls TS-params, that are not None
+        # TODO: make Sd exeption more beautiful or independent from dict
         if imp_input_given:
             # TODO: Perform format parsing on z: imag/real, abs/rad?
             self.f_z = f_z
@@ -201,12 +215,12 @@ class ElectroDynamic(Transducers):
                 self.f_z_added_mass = f_z_added_mass
                 self.z_abs_added_mass = z_added_mass
                 self.added_mass = added_mass
-            else:
-                warnings.warn(
-                    'Mms not calculated: missing added mass frequency vector ' 
-                    + 'and/or added mass impedance vector and/or added weight.'
-                )
-            self.imp_to_ts(added_mass_available=added_mass_imp_input_given)
+                self.imp_to_ts(added_mass_available=added_mass_imp_input_given)
+            if added_vol_imp_input_given:
+                self.f_z_added_vol = f_z_added_vol
+                self.z_abs_added_vol = z_added_vol
+                self.added_vol = added_vol
+                self.imp_to_ts(added_vol_available=added_vol_imp_input_given)
         if not imp_input_given and (len(not_none_ts_params) > 0):
             self.Mms = Mms
             self.Rec = Rec
@@ -217,23 +231,43 @@ class ElectroDynamic(Transducers):
             self.Bl = Bl
             self._update_dependent_ts_params(plot_params=False)
 
-    def imp_to_ts(self, added_mass_available=True, plot_params=False):
-        self.Rec = self.z_abs[0]
-        self.fs, self._z_max = self._manual_pick_fs(self.f_z, self.z_abs, 'Free-Air')
-        if added_mass_available:
-            self.Mms = self._calc_mms_via_added_mass()
-        idx_fs = al_tls.closest_idx_to_val(arr=self.f_z, val=self.fs)
-        self._r0 = self._z_max / self.Rec
-        Z_at_f1_f2 = np.sqrt(self._r0)*self.Rec
-        idx_f1 = al_tls.closest_idx_to_val(arr=self.z_abs[:idx_fs], val=Z_at_f1_f2)
-        self._f1  = self.f_z[idx_f1]
-        # Limit f2 search frequency range to [fs:(2*fs)] to avoid Zmax@ high f:
+    def _get_z_curve_params(self, manual_pick_title_text, ):
+        Rec = self.z_abs[0]
+        fs, z_max = self._manual_pick_fs(self.f_z, self.z_abs, 'Free-Air')
+        idx_fs = al_tls.closest_idx_to_val(arr=self.f_z, val=fs)
         idx_limit_high_freq_f2 = int(2*idx_fs)
+        r0 = z_max / Rec
+        Z_at_f1_f2 = np.sqrt(r0)*Rec
+        idx_f1 = al_tls.closest_idx_to_val(arr=self.z_abs[:idx_fs], val=Z_at_f1_f2)
+        f1  = self.f_z[idx_f1]
+        # Limit f2 search frequency range to [fs:(2*fs)] to avoid Zmax@ high f:
         idx_f2 = idx_fs + al_tls.closest_idx_to_val(
             arr = self.z_abs[idx_fs:idx_limit_high_freq_f2],
             val = Z_at_f1_f2,
         )
-        self._f2 = self.f_z[idx_f2]
+        f2 = self.f_z[idx_f2]
+        print(f'f1: {f1} Hz')
+        print(f'f2: {f2} Hz')
+        return fs, Rec, r0, f1, f2, z_max, 
+
+    def imp_to_ts(
+        self,
+        added_mass_available=None,
+        added_vol_available=None,
+        plot_params=False,
+    ):
+        fs, Rec, r0, f1, f2, z_max = self._get_z_curve_params('Free Air')
+        self.fs = fs
+        self.Rec = Rec
+        self._r0 = r0 
+        self._f1 = f1
+        self._f2 = f2 
+        self._z_max = z_max
+
+        if added_mass_available:
+            self.Mms = self._calc_mms_via_added_mass()
+        if added_vol_available:
+            self.Mms = self._calc_mms_via_added_vol()
         self.Lec = self._estimate_Lec()
         self._update_dependent_ts_params()
         if plot_params:
@@ -333,6 +367,19 @@ class ElectroDynamic(Transducers):
         Mms = self.added_mass / ((self.fs / fs_new)**2 - 1)
         return Mms
 
+    def _calc_mms_via_added_vol(self, ):
+        # TODO: Implement via 
+        # Vas = Vb * ( (fs_added_vol * Q_added_vol / (fs * Qes) ) - 1 )
+        # Cms = Vas / (rho * c**2 * Sd**2);
+        # Mms = 1 / (4*pi**2 * f_added_vol**2 * Cms)
+        fs_new, _ = self._manual_pick_fs(
+            self.f_z_added_vol,
+            self.z_abs_added_vol,
+            'Added Volume',
+        )
+        self.Vas = self.added_vol * ((fs_new/self.fs)**2 - 1)
+        pass
+
     def get_pressure_resp(self):
         pass
 
@@ -386,6 +433,8 @@ class ElectroDynamic(Transducers):
         self.Cms = 1 / ((2*np.pi*self.fs)**2 * self.Mms)
         self.Rms = 1 / (2*np.pi*self.fs*self.Qms*self.Cms)
         self.Bl = np.sqrt(self.Rms*(self._z_max - self.Rec))
+
+
         if self.c is None or self.rho is None:
             warnings.warn('c and/or rho not defined: Unable to calculate Vas!')
         else:
