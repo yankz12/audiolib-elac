@@ -27,9 +27,10 @@ dayton_ls10 = ElectroDynamic(
     f_z = z_dict['Freq'],
     z_abs = z_dict['Z_abs'],
     z_rad = z_dict['Z_rad'],
-    f_z_added_mass = z_dict_added_mass['Freq'],
-    z_added_mass = z_dict_added_mass['Z_abs'],
-    added_mass=added_mass,
+    added_element_method = 'mass',
+    added_element_quantity = added_mass,
+    f_z_added = z_dict_added_mass['Freq'],
+    z_added = z_dict_added_mass['Z_abs'],
     Lec_estimation_range=Lec_estimation_range,
     Sd = Sd,
 )
