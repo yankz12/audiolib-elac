@@ -370,6 +370,7 @@ class ElectroDynamic(Transducers):
             self.z_abs_added,
             'Added Mass',
         )
+        print(fs_new)
         Mms = self.added_element_quantity / ((self.fs / fs_new)**2 - 1)
         return Mms
 
@@ -385,15 +386,12 @@ class ElectroDynamic(Transducers):
             z_abs = self.z_abs_added,
             manual_pick_title_text = 'Added volume',
         )
+        print(f'r0 added: {r0}')
         Qmsc = fs_added * np.sqrt(r0) / (f2 - f1) # sc for speaker closed
         Qesc = Qmsc / (r0 - 1)
         return ( (fs_added * Qesc / (self.fs * self.Qes)) - 1) * self.added_element_quantity
 
     def _calc_cms_via_added_vol(self):
-        print(f'Vas : {self.Vas}')
-        print(f'rho : {self.rho}')
-        print(f'c : {self.c}')
-        print(f'Sd : {self.Sd}')
         return self.Vas / (self.rho * self.c**2 * self.Sd**2)
 
     def _calc_mms_via_added_vol(self, ):
