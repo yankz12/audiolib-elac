@@ -286,7 +286,9 @@ class ElectroDynamic(Transducers):
             self.Mms = self._calc_mms()
 
         self.Lec = self._estimate_Lec()
-        self._update_dependent_ts_params()
+        self.Rms = 1 / (2*np.pi*self.fs*self.Qms*self.Cms)
+        self.Bl = np.sqrt(self.Rms*(self._z_max - self.Rec))
+        # self._update_dependent_ts_params()
         if plot_params:
             self.plot_z_params()
 
@@ -386,7 +388,6 @@ class ElectroDynamic(Transducers):
             z_abs = self.z_abs_added,
             manual_pick_title_text = 'Added volume',
         )
-        print(f'r0 added: {r0}')
         Qmsc = fs_added * np.sqrt(r0) / (f2 - f1) # sc for speaker closed
         Qesc = Qmsc / (r0 - 1)
         return ( (fs_added * Qesc / (self.fs * self.Qes)) - 1) * self.added_element_quantity
@@ -418,28 +419,39 @@ class ElectroDynamic(Transducers):
         """
         v_Rec = self.Rec*np.ones(len(self.f_z))
         v_z_f1_f2 = np.sqrt(self._r0)*self.Rec*np.ones(len(self.f_z))
-        fig, ax = al_plt.plot_rfft_freq(
-            self.f_z,
-            self.z_abs,
+        fig, ax_mag, ax_arg = al_plt.plot_mag_phase(
+            freq_h=self.f_z,
+            magnitude=self.z_abs,
+            phase_deg=np.array(self.z_rad)/np.pi*180,
             xscale = 'log',
-            yscale='lin',
+            yscale_mag='lin',
         )
-        ax.axvline(x=self._f1, ymin=0, ymax=100, linestyle='--', color='r', label=r'f$_1$')
-        ax.axvline(x=self._f2, ymin=0, ymax=100, linestyle='--', color='cyan', label=r'f$_2$')
-        ax.axvline(x=self.fs, ymin=0, ymax=100, linestyle='--', color='k', label=r'f$_s$')
-        ax.plot(self.f_z, v_z_f1_f2, linestyle='--', label=r'$\sqrt{r_0} R_{ec}$')
-        ax.plot(self.f_z, v_Rec, linestyle='--', label=r'$R_{ec}$')
-        ax.axvspan(
+        ax_mag.axvline(x=self._f1, ymin=0, ymax=100, linestyle='--', color='r', label=r'f$_1$')
+        ax_mag.axvline(x=self._f2, ymin=0, ymax=100, linestyle='--', color='cyan', label=r'f$_2$')
+        ax_mag.axvline(x=self.fs, ymin=0, ymax=100, linestyle='--', color='k', label=r'f$_s$')
+        ax_mag.plot(self.f_z, v_z_f1_f2, linestyle='--', label=r'$\sqrt{r_0} R_{ec}$')
+        ax_mag.plot(self.f_z, v_Rec, linestyle='--', label=r'$R_{ec}$')
+        ax_mag.axvspan(
             xmin=self._Lec_estimation_range[0],
             xmax=self._Lec_estimation_range[1],
             alpha=.5,
             color='b',
             label='$L_{{ec}}$ est. range'
         )
-        ax.set_ylabel(r'|Z| [$\Omega$]')
-        ax.legend()
+        ax_arg.axvspan(
+            xmin=self._Lec_estimation_range[0],
+            xmax=self._Lec_estimation_range[1],
+            alpha=.5,
+            color='b',
+            label='$L_{{ec}}$ est. range'
+        )
+        ax_mag.set(
+            ylabel=r'|Z| [$\Omega$]',
+            xlabel='',
+        )
+        ax_mag.legend()
         plt.show(block=False)
-        return fig, ax
+        return fig, ax_mag, ax_arg, 
 
     def _update_dependent_ts_params(self):
         """
@@ -456,12 +468,12 @@ class ElectroDynamic(Transducers):
         self.Bl = np.sqrt(self.Rms*(self._z_max - self.Rec))
 
 
-        if self.c is None or self.rho is None:
-            warnings.warn('c and/or rho not defined: Unable to calculate Vas!')
-        else:
-            self.Vas = (self.Sd*self.c)**2*self.rho/(
-                (2*np.pi*self.fs)**2*self.Mms
-            )
+        # if self.c is None or self.rho is None:
+        #     warnings.warn('c and/or rho not defined: Unable to calculate Vas!')
+        # else:
+        #     self.Vas = (self.Sd*self.c)**2*self.rho/(
+        #         (2*np.pi*self.fs)**2*self.Mms
+        #     )
 
     def print_ts(self):
         print('\n')
@@ -501,9 +513,10 @@ class ElectroDynamic(Transducers):
 
     @c.setter
     def c(self, c):
-        self._c = c
-        print('\nRecalculating TS-params from new c ... ')
-        self._update_dependent_ts_params()
+        raise ValueError(
+            'Cannot set speed of sound in existing ' +
+            'instance of ElectroDynamic: Creation of new instance necessary!'
+        )
 
     @property
     def rho(self):
@@ -511,9 +524,10 @@ class ElectroDynamic(Transducers):
 
     @rho.setter
     def rho(self, rho):
-        self._rho = rho
-        print('\nRecalculating TS-params from new rho ... ')
-        self._update_dependent_ts_params()
+        raise ValueError(
+            'Cannot set fluid density in existing ' +
+            'instance of ElectroDynamic: Creation of new instance necessary!'
+        )
 
     @property
     def Lec_estimation_range(self):
