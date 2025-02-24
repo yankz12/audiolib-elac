@@ -6,16 +6,25 @@ from dataclasses import dataclass
 
 @dataclass(kw_only=True)
 class StateSpaceModelling(ABC):
-
     """
+    Calculates the dynamics of an Nth ordder system as a first order
+    differential equation in an N-sized-vector (= state):
+    
+    dq(t)/dt = A*q(t) + B*u(t),
+        q(t) being the state vector and
+        u(t) being the input vector
+
     It is intented to always have the output as dictionary in self.output_dict
     The pure output matrix is ommited.
-    Setting the observation order resets the output matrix!
+    Setting the observation order resets the output matrix to zeros!
 
     Parameters
     ----------
-    obs_order : list of strings, CAUTION: Setting this value 
-                after initialization resets output!
+    A : np.nparray
+        A-Matrix of the system under study
+    B : np.ndarray
+    obs_order : list of strings
+        CAUTION: Setting this value after initialization resets output to zeros!
         Contains the order of observations, e.g. ['i', 'x', 'v'] for observing
         current, displacement and velocity. Is directly linked to matrices
         A & B, since the observation order changes the shape of those matrices
@@ -102,7 +111,7 @@ class EulerBackward(StateSpaceModelling):
     def run_over_input(self):
         # TODO: Fix the [:-3]. This is a left-over from an earlier project!
         self._validate_input_sig()
-        for idx in range(1, len(self._output_matrix[:-3])):
+        for idx in range(1, len(self._output_matrix)):
             y_n = self.run_one_sample(
                 idx
             )
